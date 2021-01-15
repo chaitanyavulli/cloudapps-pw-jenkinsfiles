@@ -1,0 +1,76 @@
+node('c7-nhdocker'){
+
+def timeS = new Date ()
+def TS = timeS.format ('yyyyMMdd.HHmm')
+print TS
+
+currentBuild.displayName = "${BUILD_NUMBER}:${PW_BRANCH}:${TS}"
+
+cleanWs()
+try {
+    parallel Builds: { 
+    stage ('Cloudapps-1006') {
+              
+				build job: 'cloudapps-1006', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]	
+    }
+	}, Build1007: {
+	stage ('Cloudapps-1007') {
+    				build job: 'cloudapps-1007', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+
+    }
+	}, Build1008: {
+    stage ('Cloudapps-1008') {
+	    				build job: 'cloudapps-1008', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+    }
+    }, Build1009: {
+    stage ('Cloudapps-1009') {
+	    				build job: 'cloudapps-1009', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+	}
+	}, Build1010: {
+    stage ('Cloudapps-1010') {
+	    				build job: 'cloudapps-1010', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+	}
+	}, Build1011: {
+    stage ('Cloudapps-1011') {
+	    				build job: 'cloudapps-1011', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+	}
+	}, Build1012: {
+    stage ('Cloudapps-1012') {
+	    				build job: 'cloudapps-1012', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+	}
+	}, Build1013: {
+    stage ('Cloudapps-1013') {
+	    				build job: 'cloudapps-1013', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]
+
+    
+	}
+	
+	}
+	} catch (Exception Error) {
+        currentBuild.result = 'FAILURE'
+        throw Error
+	}	
+	
+
+stage ("Email Notification"){
+
+emailext body: '''$DEFAULT_CONTENT - Branch: $PW_BRANCH
+
+Test logs, pcap, etc can be found using the link above.
+
+=======================================================
+== TEST LOG:
+=======================================================
+
+${BUILD_LOG, maxLines=5000, escapeHtml=true}
+
+=======================================================
+=======================================================
+=======================================================
+''', subject: '$DEFAULT_SUBJECT - Branch: $PW_BRANCH', to: 'bforgrave@parallelwireless.com'
+
+}
+
+
+
+}

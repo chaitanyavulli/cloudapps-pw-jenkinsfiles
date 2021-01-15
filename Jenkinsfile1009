@@ -1,0 +1,115 @@
+node('Challenger_1009'){
+
+def pw_test_branch="${PW_BRANCH}"
+def cloudapps_path="/home/parallel/cloudapps/test/automation/son20_automation_toolkit/branch"
+
+def timeS = new Date ()
+def TS = timeS.format ('yyyyMMdd.HHmm')
+print TS
+
+currentBuild.displayName = "${BUILD_NUMBER}:Challenger-1009:cloudapps:${PW_BRANCH}:${TS}"
+
+stage ('Fetch Code') {
+
+sh"""
+
+cd /root/workspace/cloudapps-1009/
+rm -rf *
+
+(hostname; whoami; pwd; ls -lrt; cd /tmp; rm -rf /tmp/*; ls -lrt /tmp/; cd /home/parallel/; rm -rf cloudapps; ls -lrt; su -c "cd /home/parallel/; whoami; ls -lrt; rm -rf cloudapps; ls -lrt; git clone ssh://git@nhbsm03.parallelwireless.net:7999/git/cd/cloudapps.git --branch $PW_BRANCH; ls -lrt" parallel) || hostname
+# source env
+source ~/.bash_profile
+
+"""
+}
+
+
+stage('Build'){
+
+sh"""
+
+sh ${cloudapps_path}/develop/jenkins_test.sh
+
+"""
+
+}
+
+
+
+stage('Collecting the artifacts') {
+
+dir("${WORKSPACE}") {
+
+sh """
+ls -altr
+
+echo "Below is the list of artifacts produced form the initial build."
+"""
+ }
+}
+
+stage('Publish') {
+
+def server = Artifactory.server("production artifactory")
+					
+				   def uploadSpec = """\
+                    {
+                        "files": [
+                            {
+                                "pattern": "/root/workspace/cloudapps-1009/*.csv",
+                                "target": "pw-products/cloudapps/develop/${TS}/",
+                                "props": "cloudapps-pipeline=latest"
+                                
+                            },
+							
+							{
+                                "pattern": "/root/workspace/cloudapps-1009/*.zip",
+                                "target": "pw-products/cloudapps/develop/${TS}/",
+                                "props": "cloudapps-pipeline=latest"
+                                
+                            },
+							{
+                                "pattern": "/root/workspace/cloudapps-1009/son20_redeploy*",
+                                "target": "pw-products/cloudapps/develop/${TS}/",
+                                "props": "cloudapps-pipeline=latest"
+                                
+                            }
+							
+							
+                        ]
+                    }"""
+                    def buildInfo = server.upload(spec: uploadSpec)
+                    server.publishBuildInfo(buildInfo)
+           
+
+
+		   } 	 
+
+stage ('Scanning the CSV file'){
+    dir("${WORKSPACE}") {
+    sh '''    
+   if [ "$(egrep -w FAIL *.csv)" ]
+
+then
+    echo "Job is failed"
+    exit 1
+else
+
+    echo "No failures found in the Job based on the produced CSV file"
+
+fi
+
+if [ ! -f *.csv ] ; then
+    echo 'File "*.csv" is not there, aborting.'
+    exit 1
+fi
+
+
+'''
+ 
+    }    
+    
+}
+
+
+}

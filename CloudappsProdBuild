@@ -1,0 +1,254 @@
+node('c7-nhdocker'){
+
+def timeS = new Date ()
+def TS = timeS.format ('yyyyMMdd.HHmm')
+print TS
+
+currentBuild.displayName = "${BUILD_NUMBER}:${PW_BRANCH}:${TS}"
+
+cleanWs()
+try {
+   stage ('Fetch Code') {
+   
+   checkout poll: false, scm: [$class: 'GitSCM', branches: [[name: 'refs/heads/${PW_BRANCH}']], 
+   browser: [$class: 'BitbucketWeb', repoUrl: 'https://git.parallelwireless.net/projects/cd/repos/cloudapps'], 
+   doGenerateSubmoduleConfigurations: false, extensions: [[$class: 'LocalBranch', 
+   localBranch: '${PW_BRANCH}']], 
+   submoduleCfg: [], 
+   userRemoteConfigs: [[credentialsId: 'd29d1f67-9bd5-4c30-91d6-6d4338aea770', 
+   url: 'https://pw-build@nhbsm02.parallelwireless.net/scm/git/cd/cloudapps.git']]]
+   
+   sh """
+   pwd
+
+   """   
+   
+   }
+   
+   stage ('Build') {
+   
+   dir("${WORKSPACE}")  {
+   
+   sh '''
+   
+   #  Script taken from jenkins configuration to be called from job - to be converted to jenkinsFile by development
+#  https://pw2jenkins.parallelwireless.net:8443/job/CloudApps_Production/job/CloudApps_Production_Build_AWS_Parallel/config
+echo =====================
+echo Clean up CloudApps files on the build server.
+echo =====================
+echo Find the number of CloudApps build processes running.
+cloudapps_builds_running=$(ps -axmf | grep -i cloudapps | grep -v grep | wc -l)
+echo cloudapps_builds_running == $cloudapps_builds_running
+echo =====================
+echo If no CloudApps builds are running, clean up.
+if [ $cloudapps_builds_running == 0 ]
+then
+    echo =====================
+    echo No CloudApps builds are running.
+    echo =====================
+    echo delete jar files in /tmp
+    rm /tmp/*.jar
+    echo =====================
+    echo This will remove:
+    echo - all stopped containers
+    echo - all networks not used by at least one container
+    echo - all volumes not used by at least one container
+    echo - all images without at least one container associated to them
+    echo - all build cache
+    docker system prune -a -f --volumes
+else
+    echo =====================
+    echo CloudApps builds are running
+    echo Do NOT clean up files this time.
+fi
+
+echo =====================
+pw_build_branch=develop
+PW_BRANCH=develop
+echo $PW_BRANCH
+echo $pw_build_branch
+GIT_LOCAL_BRANCH=develop
+echo $GIT_LOCAL_BRANCH
+GIT_COMMIT=0c215e7add2d019453851f9b0ae4583ffb82b4a2
+echo =====================
+echo if $pw_build_branch exists
+echo     use the build script for that branch
+echo else
+echo     use the build script for develop
+echo =====================
+
+pwd
+
+jenkins_build="test/automation/son20_automation_toolkit/branch/$pw_build_branch/jenkins_build.sh"
+if [ -f "$jenkins_build" ]
+then
+    echo "jenkins_build == $jenkins_build"
+    source $jenkins_build
+else
+    jenkins_build="test/automation/son20_automation_toolkit/branch/develop/jenkins_build.sh"
+    echo "jenkins_build == $jenkins_build"
+    source $jenkins_build
+fi
+
+
+
+
+# Adding the Jenkins configuration of creating a package
+
+
+function create_manifest_file {
+
+        echo "==============================="
+        echo "function create_manifest_file"
+        echo "==============================="
+
+    # Create manifest file
+    # holds the info for each file that is included
+
+    cd $WORKSPACE
+
+    echo "Manifest: nrtric" > nrtric_manifest.txt
+        echo "=============================== version" >> nrtric_manifest.txt
+    echo "Repository: pwartifactory.parallelwireless.net/cloudapps/${GIT_LOCAL_BRANCH}" >> nrtric_manifest.txt
+    echo "Version: $RELEASE_VERSION" >> nrtric_manifest.txt
+    echo "Epoch: ${DATE_EPOCH}" >> nrtric_manifest.txt
+    echo "Branch Name: $BRANCH_TRIMMED" >> nrtric_manifest.txt
+    echo "Build Tag: $GIT_COMMIT" >> nrtric_manifest.txt
+    echo "Build Date: $DATE" >> nrtric_manifest.txt
+        echo "=============================== pw apps" >> nrtric_manifest.txt
+    echo "File: nrtric_app.tar" >> nrtric_manifest.txt
+    echo "webui:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "webuihelper:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "servicebus:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonaccess:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonanr:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sondeviceinterface:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonfaultmgr:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonhnginterface:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonnetconf:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonpci:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonstatsmgr:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sontimer:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonsnmpagent:${GIT_COMMIT}" >> nrtric_manifest.txt
+    echo "sonimagemgr:${GIT_COMMIT}" >> nrtric_manifest.txt
+        echo "=============================== 3rd party apps" >> nrtric_manifest.txt
+    echo "File: nrtric_platform.tar" >> nrtric_manifest.txt
+    echo "alpine:3.12.0" >> nrtric_manifest.txt
+    echo "debezium/connect:0.9" >> nrtric_manifest.txt
+    echo "fluentd:v1.24" >> nrtric_manifest.txt
+    echo "grafana:6.7.4" >> nrtric_manifest.txt
+    echo "istio/pilot:1.6.8" >> nrtric_manifest.txt
+    echo "istio/proxyv2:1.6.8" >> nrtric_manifest.txt
+    echo "kafka:2.5" >> nrtric_manifest.txt
+    echo "metrics-server-amd64:v0.3.6" >> nrtric_manifest.txt
+    echo "mongo:4.2" >> nrtric_manifest.txt
+    echo "prometheus:v2.15.1" >> nrtric_manifest.txt
+    echo "pw-zk-ubuntu:3.4.14" >> nrtric_manifest.txt
+        echo "=============================== deploy yaml files" >> nrtric_manifest.txt
+        echo "File: nrtric_deploy_yamls.tar.gz" >> nrtric_manifest.txt
+    echo "deploy file" >> nrtric_manifest.txt
+        echo "===============================" >> nrtric_manifest.txt
+
+    cat nrtric_manifest.txt
+    cp -f nrtric_manifest.txt $WORKSPACE/install/platform/kube/nrtric_manifest.txt
+    cat $WORKSPACE/install/platform/kube/nrtric_manifest.txt
+
+}
+
+function package_3rd_party_container_images {
+
+        echo "==============================="
+        echo "function package_3rd_party_container_images"
+        echo "==============================="
+
+    # produces a tar file 3rd_party_containers_$nrtric_containers_version.tar.gz
+    #
+    # 3rd_party_containers_$nrtric_containers_version.tar.gz
+    #
+    # this is currently handled by
+
+    cd $WORKSPACE
+    sh $WORKSPACE/install/platform/kube/packaging_scripts/build_platform_container_tar.sh pwartifactory.parallelwireless.net/cloudapps/develop nrtric_platform.tar
+
+}
+
+function package_apps_deploy {
+
+        echo "==============================="
+}
+						
+   '''
+   
+    }
+   }
+   
+   stage ('Triggering Parallel Steps') {
+   
+    dir("${WORKSPACE}")  {
+   		//build job: 'CloudApps-Production-ParallelTestPipeline', parameters: [[$class: 'StringParameterValue', name: 'PW_BRANCH', value: String.valueOf("${PW_BRANCH}")],[$class: 'StringParameterValue', name: 'VERBOSITY', value: String.valueOf("${VERBOSITY}")],[$class: 'StringParameterValue', name: 'FUNCTIONAL_TESTS', value: String.valueOf("${FUNCTIONAL_TESTS}")],[$class: 'StringParameterValue', name: 'PERFORMANCE_TESTS', value: String.valueOf("${PERFORMANCE_TESTS}")],[$class: 'StringParameterValue', name: 'RUN_TO_COMPLETION', value: String.valueOf("${RUN_TO_COMPLETION}")]]	
+
+   
+   }
+   
+   }
+   
+   stage ('Archive the Artifacts') {
+   dir("${WORKSPACE}")  {
+   archiveArtifacts '*.txt'
+   
+  }
+   }
+      
+   stage ('Post Build Action') {
+   dir("${WORKSPACE}")  {
+
+   sh '''
+   pw_build_branch=develop
+   PW_BRANCH=develop
+   echo $PW_BRANCH
+   echo $pw_build_branch
+   GIT_LOCAL_BRANCH=develop
+   echo $GIT_LOCAL_BRANCH
+   GIT_COMMIT=0c215e7add2d019453851f9b0ae4583ffb82b4a2
+   chmod +x cloudapps_post_build.sh
+
+   ./cloudapps_post_build.sh
+
+   '''
+
+    }
+  }
+  
+  stage ('Scanning for failures') {
+   dir("${WORKSPACE}")  {
+   
+   findText alsoCheckConsoleOutput: true, regexp: 'FAILURE!'
+   
+  } 
+   }
+  
+
+ } finally {
+            
+                
+                    step([
+					$class: 'CloverPublisher',
+					cloverReportDir: 'target/site/clover',
+					cloverReportFileName: 'clover.xml',
+					healthyTarget: [methodCoverage: 51, conditionalCoverage: 37, statementCoverage: 42], // optional, default is: method=70, conditional=80, statement=80
+					unhealthyTarget: [methodCoverage: 50, conditionalCoverage: 36, statementCoverage: 41], // optional, default is none
+					failingTarget: [methodCoverage: 50, conditionalCoverage: 36, statementCoverage: 41]     // optional, default is none
+					])
+   
+                
+
+               
+            
+            
+        }
+    
+
+
+
+
+}
